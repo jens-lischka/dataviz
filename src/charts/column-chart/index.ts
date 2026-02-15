@@ -18,6 +18,17 @@ import type { Theme } from "@/brand/types";
 import { groupAndAggregate } from "@/engine/mapper";
 import { parseNumber } from "@/engine/detector";
 
+// ─── Thumbnail SVG ───────────────────────────────────────────────────
+
+const THUMBNAIL_SVG = `<svg viewBox="0 0 120 80" xmlns="http://www.w3.org/2000/svg">
+  <rect x="10" y="50" width="16" height="25" rx="2" fill="#0082CA" opacity="0.9"/>
+  <rect x="32" y="20" width="16" height="55" rx="2" fill="#0082CA" opacity="0.9"/>
+  <rect x="54" y="35" width="16" height="40" rx="2" fill="#0082CA" opacity="0.9"/>
+  <rect x="76" y="10" width="16" height="65" rx="2" fill="#0082CA" opacity="0.9"/>
+  <rect x="98" y="42" width="16" height="33" rx="2" fill="#0082CA" opacity="0.9"/>
+  <line x1="8" y1="76" x2="116" y2="76" stroke="#999" stroke-width="1"/>
+</svg>`;
+
 // ─── Chart Definition ────────────────────────────────────────────────
 
 export const columnChart: ChartTemplate = {
@@ -306,14 +317,3 @@ export const columnChart: ChartTemplate = {
     return "// Code generation not yet implemented for Column Chart.\n// Coming in Phase 2.";
   },
 };
-
-// ─── Thumbnail SVG ───────────────────────────────────────────────────
-
-const THUMBNAIL_SVG = `<svg viewBox="0 0 120 80" xmlns="http://www.w3.org/2000/svg">
-  <rect x="10" y="50" width="16" height="25" rx="2" fill="#0082CA" opacity="0.9"/>
-  <rect x="32" y="20" width="16" height="55" rx="2" fill="#0082CA" opacity="0.9"/>
-  <rect x="54" y="35" width="16" height="40" rx="2" fill="#0082CA" opacity="0.9"/>
-  <rect x="76" y="10" width="16" height="65" rx="2" fill="#0082CA" opacity="0.9"/>
-  <rect x="98" y="42" width="16" height="33" rx="2" fill="#0082CA" opacity="0.9"/>
-  <line x1="8" y1="76" x2="116" y2="76" stroke="#999" stroke-width="1"/>
-</svg>`;

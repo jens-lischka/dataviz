@@ -15,13 +15,6 @@ import type { DataRow, DataType, ColumnMeta } from "@/charts/types";
 
 const SAMPLE_SIZE = 100;
 
-/** Patterns for European-style numbers: 1.000,50 or 1000,50 */
-const EU_NUMBER_PATTERN = /^-?\d{1,3}(\.\d{3})*(,\d+)?$/;
-/** Patterns for US-style numbers: 1,000.50 or 1000.50 */
-const US_NUMBER_PATTERN = /^-?\d{1,3}(,\d{3})*(\.\d+)?$/;
-/** Plain integer or float */
-const PLAIN_NUMBER_PATTERN = /^-?\d+(\.\d+)?$/;
-
 /** Common date patterns */
 const DATE_PATTERNS = [
   /^\d{4}-\d{2}-\d{2}$/, // ISO: 2024-01-15
@@ -111,32 +104,61 @@ function detectSingleColumnType(values: (string | number | boolean)[]): DataType
 /**
  * Parse a string as a number, handling both US and European formats.
  * Returns null if the value is not a valid number.
+ *
+ * Strategy:
+ * 1. If both dots and commas present, the last separator is the decimal.
+ * 2. If only commas: groups of exactly 3 digits → US thousands; otherwise EU decimal.
+ * 3. If only dots: groups of exactly 3 digits → EU thousands; otherwise plain decimal.
+ * 4. Plain number fallback.
  */
 export function parseNumber(value: string): number | null {
   const trimmed = value.trim();
   if (trimmed === "" || trimmed === "-") return null;
 
-  // Plain number (no thousand separators)
-  if (PLAIN_NUMBER_PATTERN.test(trimmed)) {
-    const n = Number(trimmed);
-    return isNaN(n) ? null : n;
+  const hasComma = trimmed.includes(",");
+  const hasDot = trimmed.includes(".");
+
+  // 1. Both separators present — last one is the decimal separator
+  if (hasComma && hasDot) {
+    const lastDot = trimmed.lastIndexOf(".");
+    const lastComma = trimmed.lastIndexOf(",");
+
+    if (lastComma > lastDot) {
+      // EU format: 1.000,50 → comma is decimal
+      const normalized = trimmed.replace(/\./g, "").replace(",", ".");
+      const n = Number(normalized);
+      return isNaN(n) ? null : n;
+    } else {
+      // US format: 1,000.50 → dot is decimal
+      const normalized = trimmed.replace(/,/g, "");
+      const n = Number(normalized);
+      return isNaN(n) ? null : n;
+    }
   }
 
-  // European format: 1.000,50 → 1000.50
-  if (EU_NUMBER_PATTERN.test(trimmed)) {
-    const normalized = trimmed.replace(/\./g, "").replace(",", ".");
-    const n = Number(normalized);
-    return isNaN(n) ? null : n;
+  // 2. Only commas — check for US thousands pattern (1-3 digits, then groups of exactly 3)
+  if (hasComma) {
+    if (/^-?\d{1,3}(,\d{3})+$/.test(trimmed)) {
+      const n = Number(trimmed.replace(/,/g, ""));
+      return isNaN(n) ? null : n;
+    }
+    // Otherwise treat comma as EU decimal separator: 3,14 → 3.14
+    if (/^-?\d+(,\d+)$/.test(trimmed)) {
+      const n = Number(trimmed.replace(",", "."));
+      return isNaN(n) ? null : n;
+    }
   }
 
-  // US format: 1,000.50 → 1000.50
-  if (US_NUMBER_PATTERN.test(trimmed)) {
-    const normalized = trimmed.replace(/,/g, "");
-    const n = Number(normalized);
-    return isNaN(n) ? null : n;
+  // 3. Only dots — check for EU thousands pattern (1-3 digits, then groups of exactly 3)
+  if (hasDot) {
+    if (/^-?\d{1,3}(\.\d{3})+$/.test(trimmed)) {
+      const n = Number(trimmed.replace(/\./g, ""));
+      return isNaN(n) ? null : n;
+    }
+    // Otherwise treat dot as plain decimal: 3.14 → 3.14
   }
 
-  // Try native parsing as fallback
+  // 4. Plain number fallback
   const n = Number(trimmed);
   return isNaN(n) ? null : n;
 }
