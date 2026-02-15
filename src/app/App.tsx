@@ -2,10 +2,16 @@
  * App Shell
  *
  * Manages the 5-step workflow navigation and renders the active step.
- * Step components are lazy-loaded for code splitting.
+ * Wraps the app in ThemeProvider for chart-level theming.
  */
 
 import { useAppStore } from "./store";
+import { ThemeProvider } from "@/brand/ThemeContext";
+import DataInput from "@/steps/01-DataInput/DataInput";
+import ChartSelect from "@/steps/02-ChartSelect/ChartSelect";
+import Mapping from "@/steps/03-Mapping/Mapping";
+import Customize from "@/steps/04-Customize/Customize";
+import Export from "@/steps/05-Export/Export";
 
 const STEPS = [
   { number: 1, label: "Data", short: "Upload" },
@@ -16,14 +22,22 @@ const STEPS = [
 ] as const;
 
 export default function App() {
+  return (
+    <ThemeProvider>
+      <AppShell />
+    </ThemeProvider>
+  );
+}
+
+function AppShell() {
   const currentStep = useAppStore((s) => s.currentStep);
   const maxReachedStep = useAppStore((s) => s.maxReachedStep);
   const goToStep = useAppStore((s) => s.goToStep);
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-surface-50">
       {/* Header */}
-      <header className="border-b border-surface-200 bg-white">
+      <header className="border-b border-surface-200 bg-white sticky top-0 z-30">
         <div className="max-w-screen-xl mx-auto px-6 py-4 flex items-center justify-between">
           <h1 className="text-lg font-semibold tracking-tight text-surface-900">
             Chart Builder
@@ -75,72 +89,19 @@ export default function App() {
   );
 }
 
-/**
- * Renders the component for the current step.
- * TODO: Replace placeholders with actual step components as they're built.
- */
 function StepContent({ step }: { step: number }) {
   switch (step) {
     case 1:
-      return <StepPlaceholder step={1} title="Upload Your Data" description="Paste data from a spreadsheet, upload a CSV/XLSX file, or choose a sample dataset." />;
+      return <DataInput />;
     case 2:
-      return <StepPlaceholder step={2} title="Choose a Chart Type" description="Select the visualization that best fits your data and story." />;
+      return <ChartSelect />;
     case 3:
-      return <StepPlaceholder step={3} title="Map Your Data" description="Drag data columns to chart dimensions (axes, colors, sizes)." />;
+      return <Mapping />;
     case 4:
-      return <StepPlaceholder step={4} title="Customize" description="Switch themes, adjust colors, typography, and preview at different screen sizes." />;
+      return <Customize />;
     case 5:
-      return <StepPlaceholder step={5} title="Export" description="Download as SVG, PNG, or copy interactive code." />;
+      return <Export />;
     default:
       return null;
   }
-}
-
-/** Temporary placeholder for steps not yet implemented */
-function StepPlaceholder({
-  step,
-  title,
-  description,
-}: {
-  step: number;
-  title: string;
-  description: string;
-}) {
-  const goToStep = useAppStore((s) => s.goToStep);
-  const maxReachedStep = useAppStore((s) => s.maxReachedStep);
-
-  return (
-    <div className="max-w-screen-xl mx-auto px-6 py-16 flex flex-col items-center justify-center text-center">
-      <div className="w-12 h-12 rounded-full bg-surface-100 flex items-center justify-center text-surface-500 text-lg font-semibold mb-4">
-        {step}
-      </div>
-      <h2 className="text-2xl font-semibold text-surface-900 mb-2">{title}</h2>
-      <p className="text-surface-500 max-w-md mb-8">{description}</p>
-
-      <div className="flex gap-3">
-        {step > 1 && (
-          <button
-            onClick={() => goToStep(step - 1)}
-            className="px-5 py-2.5 text-sm font-medium text-surface-600 bg-surface-100 rounded-lg hover:bg-surface-200 transition-colors"
-          >
-            ← Back
-          </button>
-        )}
-        {step < 5 && (
-          <button
-            onClick={() => {
-              // For prototyping: allow advancing even without real data
-              useAppStore.setState({
-                currentStep: step + 1,
-                maxReachedStep: Math.max(maxReachedStep, step + 1),
-              });
-            }}
-            className="px-5 py-2.5 text-sm font-medium text-white bg-surface-900 rounded-lg hover:bg-surface-800 transition-colors"
-          >
-            Continue →
-          </button>
-        )}
-      </div>
-    </div>
-  );
 }
