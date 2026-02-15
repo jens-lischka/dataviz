@@ -7,7 +7,7 @@
 
 import { describe, it, expect } from "vitest";
 import { parseText } from "@/engine/parser";
-import { parseNumber, detectColumnTypes } from "@/engine/detector";
+import { parseNumber } from "@/engine/detector";
 import { groupAndAggregate } from "@/engine/mapper";
 import { validateMapping } from "@/engine/validator";
 import { columnChart } from "@/charts/column-chart";

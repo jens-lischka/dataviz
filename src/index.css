@@ -71,4 +71,11 @@
   .column-chip-boolean {
     @apply bg-purple-100 text-purple-800;
   }
+
+  /* Shared input field style */
+  .input-field {
+    @apply w-full px-3 py-2 text-sm bg-white border border-surface-200 rounded-lg
+           focus:outline-none focus:ring-2 focus:ring-accent-400 focus:border-transparent
+           placeholder:text-surface-400;
+  }
 }

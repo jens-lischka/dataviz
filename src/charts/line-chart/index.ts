@@ -1,50 +1,40 @@
 /**
- * Column Chart Template
+ * Line Chart Template
  *
- * Vertical bar chart comparing values across categories.
- * This is the REFERENCE IMPLEMENTATION — all other chart types
- * should follow the same structure and patterns.
- *
- * Files in a chart module:
- * - index.ts     → Exports the ChartTemplate object (this file)
- * - render.ts    → D3 render function (TODO: extract when file grows)
- * - mapData.ts   → Data transformation (TODO: extract when complex)
- * - codeGen.ts   → Code generation (TODO: implement in Phase 2)
+ * Connects data points with lines to show trends over time
+ * or across ordered categories. Supports multiple series
+ * via the optional color dimension.
  */
 
 import * as d3 from "d3";
 import type { ChartTemplate, DataRow, MappingConfig, MappedData, ResolvedOptions } from "../types";
 import type { Theme } from "@/brand/types";
-import { groupAndAggregate } from "@/engine/mapper";
 import { parseNumber } from "@/engine/detector";
 
 // ─── Thumbnail SVG ───────────────────────────────────────────────────
 
 const THUMBNAIL_SVG = `<svg viewBox="0 0 120 80" xmlns="http://www.w3.org/2000/svg">
-  <rect x="10" y="50" width="16" height="25" rx="2" fill="#0082CA" opacity="0.9"/>
-  <rect x="32" y="20" width="16" height="55" rx="2" fill="#0082CA" opacity="0.9"/>
-  <rect x="54" y="35" width="16" height="40" rx="2" fill="#0082CA" opacity="0.9"/>
-  <rect x="76" y="10" width="16" height="65" rx="2" fill="#0082CA" opacity="0.9"/>
-  <rect x="98" y="42" width="16" height="33" rx="2" fill="#0082CA" opacity="0.9"/>
-  <line x1="8" y1="76" x2="116" y2="76" stroke="#999" stroke-width="1"/>
+  <polyline points="10,60 30,40 50,50 70,25 90,35 110,15" fill="none" stroke="#0082CA" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <polyline points="10,55 30,55 50,40 70,45 90,30 110,35" fill="none" stroke="#00B5E2" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/>
+  <line x1="8" y1="70" x2="112" y2="70" stroke="#999" stroke-width="1"/>
 </svg>`;
 
 // ─── Chart Definition ────────────────────────────────────────────────
 
-export const columnChart: ChartTemplate = {
-  id: "column-chart",
-  name: "Column Chart",
-  description: "Compares values across categories using vertical bars.",
-  category: "comparison",
-  tags: ["comparison", "categorical", "basic"],
+export const lineChart: ChartTemplate = {
+  id: "line-chart",
+  name: "Line Chart",
+  description: "Trends over time with connected data points.",
+  category: "temporal",
+  tags: ["temporal", "trend", "time-series"],
   thumbnail: THUMBNAIL_SVG,
 
   // ─── Dimensions ──────────────────────────────────────────────────
   dimensions: [
     {
       id: "x",
-      name: "Categories (X Axis)",
-      description: "The categories to compare — one bar per value",
+      name: "X Axis (Time / Categories)",
+      description: "The ordered axis — typically time or sequential categories",
       required: true,
       acceptedTypes: ["string", "number", "date"],
       multiple: false,
@@ -52,7 +42,7 @@ export const columnChart: ChartTemplate = {
     {
       id: "y",
       name: "Values (Y Axis)",
-      description: "The numeric values determining bar heights",
+      description: "The numeric values for the line heights",
       required: true,
       acceptedTypes: ["number"],
       multiple: false,
@@ -60,24 +50,51 @@ export const columnChart: ChartTemplate = {
     {
       id: "color",
       name: "Color (Series)",
-      description: "Optional: split bars into colored groups",
+      description: "Optional: split into multiple lines by series",
       required: false,
       acceptedTypes: ["string"],
       multiple: false,
     },
   ],
 
-  // ─── Visual Options (chart-specific, beyond theme) ───────────────
+  // ─── Visual Options ───────────────────────────────────────────────
   visualOptions: [
     {
-      id: "sortBars",
-      name: "Sort bars",
+      id: "showDots",
+      name: "Show data points",
+      type: "boolean",
+      defaultValue: true,
+      group: "layout",
+    },
+    {
+      id: "dotRadius",
+      name: "Point radius",
+      type: "range",
+      defaultValue: 3,
+      min: 1,
+      max: 8,
+      step: 0.5,
+      group: "layout",
+    },
+    {
+      id: "lineWidth",
+      name: "Line width",
+      type: "range",
+      defaultValue: 2,
+      min: 1,
+      max: 5,
+      step: 0.5,
+      group: "layout",
+    },
+    {
+      id: "curveType",
+      name: "Curve type",
       type: "select",
-      defaultValue: "none",
+      defaultValue: "linear",
       options: [
-        { value: "none", label: "Original order" },
-        { value: "asc", label: "Ascending" },
-        { value: "desc", label: "Descending" },
+        { value: "linear", label: "Straight" },
+        { value: "monotone", label: "Smooth" },
+        { value: "step", label: "Step" },
       ],
       group: "layout",
     },
@@ -85,35 +102,14 @@ export const columnChart: ChartTemplate = {
       id: "showValues",
       name: "Show value labels",
       type: "boolean",
-      defaultValue: true,
-      group: "layout",
-    },
-    {
-      id: "valuePosition",
-      name: "Label position",
-      type: "select",
-      defaultValue: "top",
-      options: [
-        { value: "top", label: "Above bar" },
-        { value: "inside", label: "Inside bar" },
-      ],
-      group: "layout",
-    },
-    {
-      id: "barCornerRadius",
-      name: "Bar corner radius",
-      type: "range",
-      defaultValue: 2,
-      min: 0,
-      max: 12,
-      step: 1,
+      defaultValue: false,
       group: "layout",
     },
     {
       id: "yAxisStart",
       name: "Y axis starts at zero",
       type: "boolean",
-      defaultValue: true,
+      defaultValue: false,
       group: "axes",
     },
   ],
@@ -122,15 +118,15 @@ export const columnChart: ChartTemplate = {
   mappingSuggestions: [
     {
       dimensionId: "x",
-      columnNamePatterns: [/category/i, /name/i, /label/i, /group/i, /type/i, /region/i, /country/i],
+      columnNamePatterns: [/month/i, /year/i, /date/i, /time/i, /quarter/i, /period/i, /week/i],
     },
     {
       dimensionId: "y",
-      columnNamePatterns: [/value/i, /amount/i, /total/i, /count/i, /revenue/i, /sales/i, /score/i],
+      columnNamePatterns: [/value/i, /amount/i, /total/i, /revenue/i, /sales/i, /count/i, /profit/i],
     },
     {
       dimensionId: "color",
-      columnNamePatterns: [/series/i, /group/i, /segment/i, /color/i],
+      columnNamePatterns: [/series/i, /group/i, /category/i, /segment/i, /type/i],
     },
   ],
 
@@ -142,19 +138,13 @@ export const columnChart: ChartTemplate = {
 
     if (!xCol || !yCol) return [];
 
-    if (colorCol) {
-      // Grouped: each row becomes a data point with category + series + value
-      return data
-        .map((row) => ({
-          category: String(row[xCol] ?? ""),
-          series: String(row[colorCol] ?? ""),
-          value: typeof row[yCol] === "number" ? row[yCol] : parseNumber(String(row[yCol] ?? "")) ?? 0,
-        }))
-        .filter((d) => d.category !== "");
-    }
-
-    // Simple: aggregate by category
-    return groupAndAggregate(data, xCol, yCol, "sum");
+    return data
+      .map((row) => ({
+        x: String(row[xCol] ?? ""),
+        y: typeof row[yCol] === "number" ? row[yCol] : parseNumber(String(row[yCol] ?? "")) ?? 0,
+        series: colorCol ? String(row[colorCol] ?? "") : "__default__",
+      }))
+      .filter((d) => d.x !== "");
   },
 
   // ─── Render ──────────────────────────────────────────────────────
@@ -168,11 +158,8 @@ export const columnChart: ChartTemplate = {
     const { width, height } = dimensions;
     const margin = theme.layout.plotMargin;
 
-    // Clear previous render
     const svg = d3.select(node);
     svg.selectAll("*").remove();
-
-    // Set viewBox for responsive scaling
     svg.attr("viewBox", `0 0 ${width} ${height}`);
 
     const plotWidth = width - margin.left - margin.right;
@@ -180,31 +167,32 @@ export const columnChart: ChartTemplate = {
 
     if (plotWidth <= 0 || plotHeight <= 0 || data.length === 0) return;
 
-    // Apply sorting
-    let sortedData = [...data] as { category: string; value: number }[];
-    const sort = options.sortBars as string;
-    if (sort === "asc") sortedData.sort((a, b) => a.value - b.value);
-    if (sort === "desc") sortedData.sort((a, b) => b.value - a.value);
+    const typedData = data as { x: string; y: number; series: string }[];
+
+    // ─── Determine series ──────────────────────────────────────
+    const seriesNames = [...new Set(typedData.map((d) => d.series))];
+    const xValues = [...new Set(typedData.map((d) => d.x))];
+    const hasSeries = seriesNames.length > 1 || seriesNames[0] !== "__default__";
 
     // ─── Scales ────────────────────────────────────────────────
-    const categories = sortedData.map((d) => d.category);
     const xScale = d3
-      .scaleBand()
-      .domain(categories)
+      .scalePoint()
+      .domain(xValues)
       .range([0, plotWidth])
-      .padding(theme.layout.barGap);
+      .padding(0.5);
 
-    const yMin = options.yAxisStart ? 0 : d3.min(sortedData, (d) => d.value) ?? 0;
-    const yMax = d3.max(sortedData, (d) => d.value) ?? 0;
+    const allYValues = typedData.map((d) => d.y);
+    const yMin = options.yAxisStart ? 0 : d3.min(allYValues) ?? 0;
+    const yMax = d3.max(allYValues) ?? 0;
     const yScale = d3
       .scaleLinear()
-      .domain([Math.min(yMin, 0), yMax * 1.05]) // 5% headroom
+      .domain([Math.min(yMin, 0), yMax * 1.05])
       .nice()
       .range([plotHeight, 0]);
 
     // ─── Color ─────────────────────────────────────────────────
     const palette = theme.colors.palettes.categorical[0]?.colors ?? ["#3b82f6"];
-    const colorScale = d3.scaleOrdinal<string>().domain(categories).range(palette);
+    const colorScale = d3.scaleOrdinal<string>().domain(seriesNames).range(palette);
 
     // ─── Plot Group ────────────────────────────────────────────
     const g = svg
@@ -235,40 +223,92 @@ export const columnChart: ChartTemplate = {
         );
     }
 
-    // ─── Bars ──────────────────────────────────────────────────
-    const radius = (options.barCornerRadius as number) ?? 2;
+    // ─── Resolve curve factory ─────────────────────────────────
+    const curveType = options.curveType as string;
+    const curveFactory =
+      curveType === "monotone" ? d3.curveMonotoneX
+      : curveType === "step" ? d3.curveStepAfter
+      : d3.curveLinear;
 
-    g.selectAll(".bar")
-      .data(sortedData)
-      .join("rect")
-      .attr("class", "bar")
-      .attr("x", (d) => xScale(d.category) ?? 0)
-      .attr("y", (d) => yScale(Math.max(0, d.value)))
-      .attr("width", xScale.bandwidth())
-      .attr("height", (d) => Math.abs(yScale(0) - yScale(d.value)))
-      .attr("fill", (d) => colorScale(d.category))
-      .attr("rx", radius)
-      .attr("ry", radius);
+    const lineWidth = (options.lineWidth as number) ?? 2;
 
-    // ─── Value Labels ──────────────────────────────────────────
-    if (options.showValues) {
-      const pos = options.valuePosition as string;
-      g.selectAll(".value-label")
-        .data(sortedData)
-        .join("text")
-        .attr("class", "value-label")
-        .attr("x", (d) => (xScale(d.category) ?? 0) + xScale.bandwidth() / 2)
-        .attr("y", (d) =>
-          pos === "inside"
-            ? yScale(d.value) + 16
-            : yScale(d.value) - 6
-        )
-        .attr("text-anchor", "middle")
-        .attr("font-family", theme.typography.fontFamily)
-        .attr("font-size", theme.typography.dataLabel.size)
-        .attr("font-weight", theme.typography.dataLabel.weight)
-        .attr("fill", pos === "inside" ? "#FFFFFF" : theme.typography.dataLabel.color)
-        .text((d) => d3.format(",.0f")(d.value));
+    // ─── Draw lines per series ─────────────────────────────────
+    for (const series of seriesNames) {
+      const seriesData = typedData
+        .filter((d) => d.series === series)
+        // Maintain original order based on x position
+        .sort((a, b) => xValues.indexOf(a.x) - xValues.indexOf(b.x));
+
+      const lineGen = d3.line<{ x: string; y: number }>()
+        .x((d) => xScale(d.x) ?? 0)
+        .y((d) => yScale(d.y))
+        .curve(curveFactory);
+
+      // Line path
+      g.append("path")
+        .datum(seriesData)
+        .attr("class", "line")
+        .attr("fill", "none")
+        .attr("stroke", colorScale(series))
+        .attr("stroke-width", lineWidth)
+        .attr("stroke-linecap", "round")
+        .attr("stroke-linejoin", "round")
+        .attr("d", lineGen);
+
+      // Data points
+      if (options.showDots) {
+        const dotRadius = (options.dotRadius as number) ?? 3;
+        g.selectAll(`.dot-${series}`)
+          .data(seriesData)
+          .join("circle")
+          .attr("class", `dot-${series}`)
+          .attr("cx", (d) => xScale(d.x) ?? 0)
+          .attr("cy", (d) => yScale(d.y))
+          .attr("r", dotRadius)
+          .attr("fill", theme.colors.background)
+          .attr("stroke", colorScale(series))
+          .attr("stroke-width", lineWidth);
+      }
+
+      // Value labels
+      if (options.showValues) {
+        g.selectAll(`.value-${series}`)
+          .data(seriesData)
+          .join("text")
+          .attr("class", `value-${series}`)
+          .attr("x", (d) => xScale(d.x) ?? 0)
+          .attr("y", (d) => yScale(d.y) - 10)
+          .attr("text-anchor", "middle")
+          .attr("font-family", theme.typography.fontFamily)
+          .attr("font-size", theme.typography.dataLabel.size)
+          .attr("font-weight", theme.typography.dataLabel.weight)
+          .attr("fill", theme.typography.dataLabel.color)
+          .text((d) => d3.format(",.0f")(d.y));
+      }
+    }
+
+    // ─── Legend (if multiple series) ────────────────────────────
+    if (hasSeries) {
+      const legend = g.append("g")
+        .attr("class", "legend")
+        .attr("transform", `translate(0, ${-margin.top / 2})`);
+
+      seriesNames.forEach((name, i) => {
+        const item = legend.append("g")
+          .attr("transform", `translate(${i * 100}, 0)`);
+        item.append("line")
+          .attr("x1", 0).attr("x2", 16)
+          .attr("y1", 0).attr("y2", 0)
+          .attr("stroke", colorScale(name))
+          .attr("stroke-width", lineWidth);
+        item.append("text")
+          .attr("x", 20)
+          .attr("dy", "0.35em")
+          .attr("font-family", theme.typography.fontFamily)
+          .attr("font-size", theme.typography.legend.size)
+          .attr("fill", theme.typography.legend.color)
+          .text(name);
+      });
     }
 
     // ─── X Axis ────────────────────────────────────────────────
@@ -313,7 +353,6 @@ export const columnChart: ChartTemplate = {
     _format: "d3-standalone" | "react-component",
     _responsive: boolean
   ): string {
-    // TODO: Implement in Phase 2
-    return "// Code generation not yet implemented for Column Chart.\n// Coming in Phase 2.";
+    return "// Code generation not yet implemented for Line Chart.\n// Coming in Phase 2.";
   },
 };

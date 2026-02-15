@@ -1,15 +1,9 @@
 /**
- * Column Chart Template
+ * Bar Chart Template
  *
- * Vertical bar chart comparing values across categories.
- * This is the REFERENCE IMPLEMENTATION — all other chart types
- * should follow the same structure and patterns.
- *
- * Files in a chart module:
- * - index.ts     → Exports the ChartTemplate object (this file)
- * - render.ts    → D3 render function (TODO: extract when file grows)
- * - mapData.ts   → Data transformation (TODO: extract when complex)
- * - codeGen.ts   → Code generation (TODO: implement in Phase 2)
+ * Horizontal bar chart comparing values across categories.
+ * Essentially a column chart rotated 90 degrees — ideal for
+ * long category labels that would overlap on an x-axis.
  */
 
 import * as d3 from "d3";
@@ -21,38 +15,37 @@ import { parseNumber } from "@/engine/detector";
 // ─── Thumbnail SVG ───────────────────────────────────────────────────
 
 const THUMBNAIL_SVG = `<svg viewBox="0 0 120 80" xmlns="http://www.w3.org/2000/svg">
-  <rect x="10" y="50" width="16" height="25" rx="2" fill="#0082CA" opacity="0.9"/>
-  <rect x="32" y="20" width="16" height="55" rx="2" fill="#0082CA" opacity="0.9"/>
-  <rect x="54" y="35" width="16" height="40" rx="2" fill="#0082CA" opacity="0.9"/>
-  <rect x="76" y="10" width="16" height="65" rx="2" fill="#0082CA" opacity="0.9"/>
-  <rect x="98" y="42" width="16" height="33" rx="2" fill="#0082CA" opacity="0.9"/>
-  <line x1="8" y1="76" x2="116" y2="76" stroke="#999" stroke-width="1"/>
+  <rect x="8" y="8" width="55" height="12" rx="2" fill="#0082CA" opacity="0.9"/>
+  <rect x="8" y="24" width="85" height="12" rx="2" fill="#0082CA" opacity="0.9"/>
+  <rect x="8" y="40" width="65" height="12" rx="2" fill="#0082CA" opacity="0.9"/>
+  <rect x="8" y="56" width="100" height="12" rx="2" fill="#0082CA" opacity="0.9"/>
+  <line x1="7" y1="4" x2="7" y2="72" stroke="#999" stroke-width="1"/>
 </svg>`;
 
 // ─── Chart Definition ────────────────────────────────────────────────
 
-export const columnChart: ChartTemplate = {
-  id: "column-chart",
-  name: "Column Chart",
-  description: "Compares values across categories using vertical bars.",
+export const barChart: ChartTemplate = {
+  id: "bar-chart",
+  name: "Bar Chart",
+  description: "Horizontal bars — great for long category labels.",
   category: "comparison",
-  tags: ["comparison", "categorical", "basic"],
+  tags: ["comparison", "categorical", "horizontal"],
   thumbnail: THUMBNAIL_SVG,
 
   // ─── Dimensions ──────────────────────────────────────────────────
   dimensions: [
     {
-      id: "x",
-      name: "Categories (X Axis)",
+      id: "y",
+      name: "Categories (Y Axis)",
       description: "The categories to compare — one bar per value",
       required: true,
       acceptedTypes: ["string", "number", "date"],
       multiple: false,
     },
     {
-      id: "y",
-      name: "Values (Y Axis)",
-      description: "The numeric values determining bar heights",
+      id: "x",
+      name: "Values (X Axis)",
+      description: "The numeric values determining bar lengths",
       required: true,
       acceptedTypes: ["number"],
       multiple: false,
@@ -67,7 +60,7 @@ export const columnChart: ChartTemplate = {
     },
   ],
 
-  // ─── Visual Options (chart-specific, beyond theme) ───────────────
+  // ─── Visual Options ───────────────────────────────────────────────
   visualOptions: [
     {
       id: "sortBars",
@@ -89,17 +82,6 @@ export const columnChart: ChartTemplate = {
       group: "layout",
     },
     {
-      id: "valuePosition",
-      name: "Label position",
-      type: "select",
-      defaultValue: "top",
-      options: [
-        { value: "top", label: "Above bar" },
-        { value: "inside", label: "Inside bar" },
-      ],
-      group: "layout",
-    },
-    {
       id: "barCornerRadius",
       name: "Bar corner radius",
       type: "range",
@@ -110,8 +92,8 @@ export const columnChart: ChartTemplate = {
       group: "layout",
     },
     {
-      id: "yAxisStart",
-      name: "Y axis starts at zero",
+      id: "xAxisStart",
+      name: "X axis starts at zero",
       type: "boolean",
       defaultValue: true,
       group: "axes",
@@ -121,11 +103,11 @@ export const columnChart: ChartTemplate = {
   // ─── Smart Mapping Suggestions ───────────────────────────────────
   mappingSuggestions: [
     {
-      dimensionId: "x",
+      dimensionId: "y",
       columnNamePatterns: [/category/i, /name/i, /label/i, /group/i, /type/i, /region/i, /country/i],
     },
     {
-      dimensionId: "y",
+      dimensionId: "x",
       columnNamePatterns: [/value/i, /amount/i, /total/i, /count/i, /revenue/i, /sales/i, /score/i],
     },
     {
@@ -136,25 +118,24 @@ export const columnChart: ChartTemplate = {
 
   // ─── Data Mapping ────────────────────────────────────────────────
   mapData(data: DataRow[], mapping: MappingConfig, _options: ResolvedOptions): MappedData {
-    const xCol = mapping.x as string;
     const yCol = mapping.y as string;
+    const xCol = mapping.x as string;
     const colorCol = mapping.color as string | undefined;
 
-    if (!xCol || !yCol) return [];
+    if (!yCol || !xCol) return [];
 
     if (colorCol) {
-      // Grouped: each row becomes a data point with category + series + value
       return data
         .map((row) => ({
-          category: String(row[xCol] ?? ""),
+          category: String(row[yCol] ?? ""),
           series: String(row[colorCol] ?? ""),
-          value: typeof row[yCol] === "number" ? row[yCol] : parseNumber(String(row[yCol] ?? "")) ?? 0,
+          value: typeof row[xCol] === "number" ? row[xCol] : parseNumber(String(row[xCol] ?? "")) ?? 0,
         }))
         .filter((d) => d.category !== "");
     }
 
     // Simple: aggregate by category
-    return groupAndAggregate(data, xCol, yCol, "sum");
+    return groupAndAggregate(data, yCol, xCol, "sum");
   },
 
   // ─── Render ──────────────────────────────────────────────────────
@@ -171,11 +152,11 @@ export const columnChart: ChartTemplate = {
     // Clear previous render
     const svg = d3.select(node);
     svg.selectAll("*").remove();
-
-    // Set viewBox for responsive scaling
     svg.attr("viewBox", `0 0 ${width} ${height}`);
 
-    const plotWidth = width - margin.left - margin.right;
+    // Increase left margin for category labels
+    const leftMargin = Math.max(margin.left, 80);
+    const plotWidth = width - leftMargin - margin.right;
     const plotHeight = height - margin.top - margin.bottom;
 
     if (plotWidth <= 0 || plotHeight <= 0 || data.length === 0) return;
@@ -188,19 +169,19 @@ export const columnChart: ChartTemplate = {
 
     // ─── Scales ────────────────────────────────────────────────
     const categories = sortedData.map((d) => d.category);
-    const xScale = d3
+    const yScale = d3
       .scaleBand()
       .domain(categories)
-      .range([0, plotWidth])
+      .range([0, plotHeight])
       .padding(theme.layout.barGap);
 
-    const yMin = options.yAxisStart ? 0 : d3.min(sortedData, (d) => d.value) ?? 0;
-    const yMax = d3.max(sortedData, (d) => d.value) ?? 0;
-    const yScale = d3
+    const xMin = options.xAxisStart ? 0 : d3.min(sortedData, (d) => d.value) ?? 0;
+    const xMax = d3.max(sortedData, (d) => d.value) ?? 0;
+    const xScale = d3
       .scaleLinear()
-      .domain([Math.min(yMin, 0), yMax * 1.05]) // 5% headroom
+      .domain([Math.min(xMin, 0), xMax * 1.05])
       .nice()
-      .range([plotHeight, 0]);
+      .range([0, plotWidth]);
 
     // ─── Color ─────────────────────────────────────────────────
     const palette = theme.colors.palettes.categorical[0]?.colors ?? ["#3b82f6"];
@@ -209,19 +190,19 @@ export const columnChart: ChartTemplate = {
     // ─── Plot Group ────────────────────────────────────────────
     const g = svg
       .append("g")
-      .attr("transform", `translate(${margin.left},${margin.top})`);
+      .attr("transform", `translate(${leftMargin},${margin.top})`);
 
-    // ─── Grid Lines ────────────────────────────────────────────
-    if (theme.axes.showYGrid) {
+    // ─── Grid Lines (vertical) ─────────────────────────────────
+    if (theme.axes.showXGrid || theme.axes.showYGrid) {
       g.append("g")
-        .attr("class", "grid-y")
+        .attr("class", "grid-x")
         .selectAll("line")
-        .data(yScale.ticks(6))
+        .data(xScale.ticks(6))
         .join("line")
-        .attr("x1", 0)
-        .attr("x2", plotWidth)
-        .attr("y1", (d) => yScale(d))
-        .attr("y2", (d) => yScale(d))
+        .attr("x1", (d) => xScale(d))
+        .attr("x2", (d) => xScale(d))
+        .attr("y1", 0)
+        .attr("y2", plotHeight)
         .attr("stroke", theme.colors.gridLine)
         .attr("stroke-width", theme.axes.gridLineWidth)
         .attr("stroke-opacity", theme.axes.gridLineOpacity)
@@ -242,62 +223,57 @@ export const columnChart: ChartTemplate = {
       .data(sortedData)
       .join("rect")
       .attr("class", "bar")
-      .attr("x", (d) => xScale(d.category) ?? 0)
-      .attr("y", (d) => yScale(Math.max(0, d.value)))
-      .attr("width", xScale.bandwidth())
-      .attr("height", (d) => Math.abs(yScale(0) - yScale(d.value)))
+      .attr("x", (d) => xScale(Math.min(0, d.value)))
+      .attr("y", (d) => yScale(d.category) ?? 0)
+      .attr("width", (d) => Math.abs(xScale(d.value) - xScale(0)))
+      .attr("height", yScale.bandwidth())
       .attr("fill", (d) => colorScale(d.category))
       .attr("rx", radius)
       .attr("ry", radius);
 
     // ─── Value Labels ──────────────────────────────────────────
     if (options.showValues) {
-      const pos = options.valuePosition as string;
       g.selectAll(".value-label")
         .data(sortedData)
         .join("text")
         .attr("class", "value-label")
-        .attr("x", (d) => (xScale(d.category) ?? 0) + xScale.bandwidth() / 2)
-        .attr("y", (d) =>
-          pos === "inside"
-            ? yScale(d.value) + 16
-            : yScale(d.value) - 6
-        )
-        .attr("text-anchor", "middle")
+        .attr("x", (d) => xScale(d.value) + 6)
+        .attr("y", (d) => (yScale(d.category) ?? 0) + yScale.bandwidth() / 2)
+        .attr("dy", "0.35em")
+        .attr("text-anchor", "start")
         .attr("font-family", theme.typography.fontFamily)
         .attr("font-size", theme.typography.dataLabel.size)
         .attr("font-weight", theme.typography.dataLabel.weight)
-        .attr("fill", pos === "inside" ? "#FFFFFF" : theme.typography.dataLabel.color)
+        .attr("fill", theme.typography.dataLabel.color)
         .text((d) => d3.format(",.0f")(d.value));
     }
 
-    // ─── X Axis ────────────────────────────────────────────────
-    if (theme.axes.showXAxis) {
-      const xAxis = g
+    // ─── Y Axis (categories) ────────────────────────────────────
+    if (theme.axes.showYAxis) {
+      const yAxis = g
         .append("g")
-        .attr("class", "axis-x")
-        .attr("transform", `translate(0,${plotHeight})`)
-        .call(d3.axisBottom(xScale).tickSize(theme.axes.tickSize).tickPadding(theme.axes.tickPadding));
+        .attr("class", "axis-y")
+        .call(d3.axisLeft(yScale).tickSize(0).tickPadding(theme.axes.tickPadding));
 
-      xAxis.select(".domain").attr("stroke", theme.colors.axisLine).attr("stroke-width", theme.axes.strokeWidth);
-      xAxis.selectAll(".tick line").attr("stroke", theme.colors.axisTickLine);
-      xAxis
+      yAxis.select(".domain").attr("stroke", theme.colors.axisLine).attr("stroke-width", theme.axes.strokeWidth);
+      yAxis
         .selectAll(".tick text")
         .attr("font-family", theme.typography.fontFamily)
         .attr("font-size", theme.typography.axisTick.size)
         .attr("fill", theme.typography.axisTick.color);
     }
 
-    // ─── Y Axis ────────────────────────────────────────────────
-    if (theme.axes.showYAxis) {
-      const yAxis = g
+    // ─── X Axis (values) ────────────────────────────────────────
+    if (theme.axes.showXAxis) {
+      const xAxis = g
         .append("g")
-        .attr("class", "axis-y")
-        .call(d3.axisLeft(yScale).ticks(6).tickSize(theme.axes.tickSize).tickPadding(theme.axes.tickPadding));
+        .attr("class", "axis-x")
+        .attr("transform", `translate(0,${plotHeight})`)
+        .call(d3.axisBottom(xScale).ticks(6).tickSize(theme.axes.tickSize).tickPadding(theme.axes.tickPadding));
 
-      yAxis.select(".domain").attr("stroke", theme.colors.axisLine).attr("stroke-width", theme.axes.strokeWidth);
-      yAxis.selectAll(".tick line").attr("stroke", theme.colors.axisTickLine);
-      yAxis
+      xAxis.select(".domain").attr("stroke", theme.colors.axisLine).attr("stroke-width", theme.axes.strokeWidth);
+      xAxis.selectAll(".tick line").attr("stroke", theme.colors.axisTickLine);
+      xAxis
         .selectAll(".tick text")
         .attr("font-family", theme.typography.fontFamily)
         .attr("font-size", theme.typography.axisTick.size)
@@ -313,7 +289,6 @@ export const columnChart: ChartTemplate = {
     _format: "d3-standalone" | "react-component",
     _responsive: boolean
   ): string {
-    // TODO: Implement in Phase 2
-    return "// Code generation not yet implemented for Column Chart.\n// Coming in Phase 2.";
+    return "// Code generation not yet implemented for Bar Chart.\n// Coming in Phase 2.";
   },
 };
