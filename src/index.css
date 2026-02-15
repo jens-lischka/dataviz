@@ -1,0 +1,74 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    @apply min-h-screen;
+  }
+
+  /* Scrollbar styling for controls panels */
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 4px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply bg-surface-300 rounded-full;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    @apply bg-surface-400;
+  }
+}
+
+@layer components {
+  /* Step navigation pill */
+  .step-pill {
+    @apply px-4 py-2 text-sm font-medium rounded-full transition-all duration-200;
+  }
+  .step-pill-active {
+    @apply bg-surface-900 text-white;
+  }
+  .step-pill-completed {
+    @apply bg-surface-200 text-surface-700 hover:bg-surface-300 cursor-pointer;
+  }
+  .step-pill-upcoming {
+    @apply bg-transparent text-surface-400 cursor-not-allowed;
+  }
+
+  /* Dimension slot for drag-and-drop */
+  .dimension-slot {
+    @apply border-2 border-dashed border-surface-300 rounded-lg p-3 min-h-[48px]
+           transition-colors duration-150;
+  }
+  .dimension-slot-active {
+    @apply border-accent-400 bg-accent-50;
+  }
+  .dimension-slot-filled {
+    @apply border-solid border-surface-300 bg-surface-100;
+  }
+
+  /* Column chip (draggable data column) */
+  .column-chip {
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium
+           cursor-grab active:cursor-grabbing transition-shadow duration-150
+           hover:shadow-md;
+  }
+  .column-chip-string {
+    @apply bg-emerald-100 text-emerald-800;
+  }
+  .column-chip-number {
+    @apply bg-blue-100 text-blue-800;
+  }
+  .column-chip-date {
+    @apply bg-amber-100 text-amber-800;
+  }
+  .column-chip-boolean {
+    @apply bg-purple-100 text-purple-800;
+  }
+}
