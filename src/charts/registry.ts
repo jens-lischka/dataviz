@@ -13,19 +13,18 @@
 import type { ChartTemplate, ChartRegistry as IChartRegistry, ColumnMeta } from "./types";
 
 // ─── Import Chart Templates ─────────────────────────────────────────
-// TODO: Uncomment as charts are implemented
 import { columnChart } from "./column-chart";
-// import { barChart } from "./bar-chart";
-// import { lineChart } from "./line-chart";
+import { barChart } from "./bar-chart";
+import { lineChart } from "./line-chart";
 // import { pieChart } from "./pie-chart";
 // import { donutChart } from "./donut-chart";
 // import { areaChart } from "./area-chart";
 // import { stackedColumnChart } from "./stacked-column";
 // import { stackedBarChart } from "./stacked-bar";
 // import { waterfallChart } from "./waterfall";
-// import { heatmapChart } from "./heatmap";
+import { heatmapChart } from "./heatmap";
 // import { treemapChart } from "./treemap";
-// import { mekkoChart } from "./mekko";
+import { mekkoChart } from "./mekko";
 
 // ─── Registry Implementation ────────────────────────────────────────
 
@@ -66,7 +65,7 @@ export const chartRegistry = new ChartRegistryImpl();
 
 // Register all available charts
 chartRegistry.register(columnChart);
-// TODO: Register additional charts as they're implemented
-// chartRegistry.register(barChart);
-// chartRegistry.register(lineChart);
-// etc.
+chartRegistry.register(barChart);
+chartRegistry.register(lineChart);
+chartRegistry.register(heatmapChart);
+chartRegistry.register(mekkoChart);
