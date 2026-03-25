@@ -1,0 +1,2 @@
+[console_scripts]
+slide-transpiler = slide_transpiler.__main__:main

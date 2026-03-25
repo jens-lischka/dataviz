@@ -1,0 +1,7 @@
+Metadata-Version: 2.4
+Name: slide-transpiler
+Version: 1.0.0
+Summary: Convert PPTX slides between templates by cloning, rebinding, and injecting slide packages
+Requires-Python: >=3.10
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
